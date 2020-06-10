@@ -24,6 +24,8 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/juju/errors"
+
+        "github.com/sirupsen/logrus"
 )
 
 const (
@@ -202,6 +204,7 @@ type EndpointMakerFunc func() (*hcsshim.HNSEndpoint, error)
 func ProvisionEndpoint(epName string, expectedNetworkId string, containerID string, netns string, makeEndpoint EndpointMakerFunc) (*hcsshim.HNSEndpoint, error) {
 	// On the second add call we expect that the endpoint already exists. If it
 	// does not then we should return an error.
+        logrus.Infof("Song Start provision netns %s containerID", netns, containerID)
 	if netns != pauseContainerNetNS {
 		_, err := hcsshim.GetHNSEndpointByName(epName)
 		if err != nil {
@@ -212,41 +215,54 @@ func ProvisionEndpoint(epName string, expectedNetworkId string, containerID stri
 	// check if endpoint already exists
 	createEndpoint := true
 	hnsEndpoint, err := hcsshim.GetHNSEndpointByName(epName)
+        logrus.Infof("Song get hnsEndpoint %s", hnsEndpoint)
 	if hnsEndpoint != nil && strings.EqualFold(hnsEndpoint.VirtualNetwork, expectedNetworkId) {
+                logrus.Infof("Song network is equal %s ", expectedNetworkId)
 		createEndpoint = false
 	}
 
 	if createEndpoint {
+                logrus.Infof("Song start create endpoint")
 		if hnsEndpoint != nil {
+                        logrus.Infof("Song start delete endpoint")
 			if _, err = hnsEndpoint.Delete(); err != nil {
+                                logrus.Infof("Song delete endpoint failed")
 				return nil, errors.Annotate(err, "failed to delete the stale HNSEndpoint")
 			}
 		}
 
 		if hnsEndpoint, err = makeEndpoint(); err != nil {
+                        logrus.Infof("Song make endpoint failed")
 			return nil, errors.Annotate(err, "failed to make a new HNSEndpoint")
 		}
 
 		if hnsEndpoint, err = hnsEndpoint.Create(); err != nil {
+                        logrus.Infof("Song create endpoint failed")
 			return nil, errors.Annotate(err, "failed to create the new HNSEndpoint")
 		}
+                logrus.Infof("Song create endpoint done")
 
 	}
 
 	// hot attach
 	if err := hcsshim.HotAttachEndpoint(containerID, hnsEndpoint.Id); err != nil {
 		if createEndpoint {
+                        logrus.Infof("Song deprovision endpoint start")
 			err := DeprovisionEndpoint(epName, netns, containerID)
 			if err != nil {
+                                logrus.Infof("Song deprovision endpoint failed")
 				return nil, errors.Annotatef(err, "failed to Deprovsion after HotAttach failure")
 			}
 		}
+                logrus.Infof("Song deprovision endpoint done")
 		if hcsshim.ErrComputeSystemDoesNotExist == err {
+                        logrus.Infof("Song return endpoint with ErrComputeSystemDoesNotExist")
 			return hnsEndpoint, nil
 		}
 		return nil, err
 	}
 
+        logrus.Infof("Song return endpoint normally")
 	return hnsEndpoint, nil
 }
 
