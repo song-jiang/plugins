@@ -246,6 +246,7 @@ func ProvisionEndpoint(epName string, expectedNetworkId string, containerID stri
 
 	// hot attach
 	if err := hcsshim.HotAttachEndpoint(containerID, hnsEndpoint.Id); err != nil {
+                createEndpoint = false
 		if createEndpoint {
                         logrus.Infof("Song deprovision endpoint start")
 			err := DeprovisionEndpoint(epName, netns, containerID)
@@ -256,8 +257,7 @@ func ProvisionEndpoint(epName string, expectedNetworkId string, containerID stri
 		}
                 logrus.Infof("Song deprovision endpoint done")
 		if hcsshim.ErrComputeSystemDoesNotExist == err {
-                        fmt.Print("Song return endpoint with ErrComputeSystemDoesNotExist")
-			//return hnsEndpoint, nil
+			return hnsEndpoint, nil
 		}
 		return nil, err
 	}
