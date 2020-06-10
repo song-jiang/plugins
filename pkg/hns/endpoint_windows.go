@@ -256,8 +256,8 @@ func ProvisionEndpoint(epName string, expectedNetworkId string, containerID stri
 		}
                 logrus.Infof("Song deprovision endpoint done")
 		if hcsshim.ErrComputeSystemDoesNotExist == err {
-                        logrus.Infof("Song return endpoint with ErrComputeSystemDoesNotExist")
-			return hnsEndpoint, nil
+                        fmt.Print("Song return endpoint with ErrComputeSystemDoesNotExist")
+			//return hnsEndpoint, nil
 		}
 		return nil, err
 	}
